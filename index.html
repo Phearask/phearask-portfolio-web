@@ -1,0 +1,321 @@
+import { useState, useRef, useCallback } from "react";
+
+const defaultData = {
+  name: "Alex Morgan",
+  title: "Full-Stack Developer & Designer",
+  bio: "I craft beautiful digital experiences that live at the intersection of design and technology. Passionate about clean code, bold visuals, and products that make people's lives better.",
+  email: "alex@example.com",
+  location: "San Francisco, CA",
+  github: "github.com/alexmorgan",
+  linkedin: "linkedin.com/in/alexmorgan",
+  skills: ["React", "Node.js", "TypeScript", "Figma", "Tailwind CSS", "GraphQL", "Python", "AWS"],
+  experience: [
+    { id: 1, role: "Senior Frontend Engineer", company: "Stripe", period: "2022 – Present", desc: "Led the redesign of the developer dashboard, improving load times by 40% and boosting user satisfaction scores." },
+    { id: 2, role: "UI/UX Designer & Developer", company: "Notion", period: "2020 – 2022", desc: "Designed and built core product features used by millions. Established the design system from scratch." },
+    { id: 3, role: "Frontend Developer", company: "Freelance", period: "2018 – 2020", desc: "Delivered 20+ client projects across e-commerce, SaaS, and media industries." },
+  ],
+  projects: [
+    { id: 1, title: "NovaDash", desc: "A real-time analytics dashboard built with React + D3.", tag: "Web App", img: null },
+    { id: 2, title: "Palette AI", desc: "AI-powered color palette generator for designers.", tag: "Tool", img: null },
+    { id: 3, title: "FlowBoard", desc: "Kanban-style project manager with drag & drop.", tag: "Productivity", img: null },
+  ],
+};
+
+function EditableText({ value, onChange, className, multiline, placeholder }) {
+  const Tag = multiline ? "textarea" : "span";
+  return multiline ? (
+    <textarea
+      className={`bg-transparent border-b border-dashed border-yellow-400/60 focus:outline-none focus:border-yellow-400 resize-none w-full ${className}`}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      rows={3}
+    />
+  ) : (
+    <span
+      contentEditable
+      suppressContentEditableWarning
+      onBlur={e => onChange(e.currentTarget.textContent)}
+      className={`border-b border-dashed border-yellow-400/60 hover:border-yellow-400 focus:outline-none focus:border-yellow-400 cursor-text ${className}`}
+    >
+      {value}
+    </span>
+  );
+}
+
+function ImageUploader({ img, onUpload, className, children, round }) {
+  const ref = useRef();
+  const [drag, setDrag] = useState(false);
+
+  const handle = f => {
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = e => onUpload(e.target.result);
+    r.readAsDataURL(f);
+  };
+
+  const onDrop = e => { e.preventDefault(); setDrag(false); handle(e.dataTransfer.files[0]); };
+  const onDrag = e => { e.preventDefault(); setDrag(true); };
+
+  return (
+    <div
+      className={`relative group cursor-pointer ${className}`}
+      onClick={() => ref.current.click()}
+      onDrop={onDrop}
+      onDragOver={onDrag}
+      onDragLeave={() => setDrag(false)}
+    >
+      <input ref={ref} type="file" accept="image/*" className="hidden" onChange={e => handle(e.target.files[0])} />
+      {img ? (
+        <img src={img} alt="uploaded" className={`w-full h-full object-cover ${round ? "rounded-full" : "rounded-xl"}`} />
+      ) : children}
+      <div className={`absolute inset-0 ${round ? "rounded-full" : "rounded-xl"} flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-white font-medium tracking-wide text-center px-2 ${drag ? "opacity-100 border-2 border-yellow-400" : ""}`}>
+        📷 Click or Drop
+      </div>
+    </div>
+  );
+}
+
+export default function Portfolio() {
+  const [data, setData] = useState(defaultData);
+  const [dark, setDark] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [avatar, setAvatar] = useState(null);
+  const [activeSection, setActiveSection] = useState("home");
+  const [newSkill, setNewSkill] = useState("");
+
+  const set = (key, val) => setData(d => ({ ...d, [key]: val }));
+  const setExp = (id, field, val) => setData(d => ({ ...d, experience: d.experience.map(e => e.id === id ? { ...e, [field]: val } : e) }));
+  const setProj = (id, field, val) => setData(d => ({ ...d, projects: d.projects.map(p => p.id === id ? { ...p, [field]: val } : p) }));
+
+  const bg = dark ? "bg-gray-950 text-gray-100" : "bg-gray-50 text-gray-900";
+  const card = dark ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200";
+  const sub = dark ? "text-gray-400" : "text-gray-500";
+  const navBg = dark ? "bg-gray-950/80" : "bg-white/80";
+
+  const E = ({ value, onChange, className, multiline, placeholder }) =>
+    editMode
+      ? <EditableText value={value} onChange={onChange} className={className} multiline={multiline} placeholder={placeholder} />
+      : multiline
+        ? <p className={className}>{value}</p>
+        : <span className={className}>{value}</span>;
+
+  const sections = ["home", "about", "projects", "contact"];
+
+  return (
+    <div className={`min-h-screen font-sans transition-colors duration-300 ${bg}`}>
+      {/* NAV */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 ${navBg} backdrop-blur-md border-b ${dark ? "border-gray-800" : "border-gray-200"} px-6 py-3 flex items-center justify-between`}>
+        <span className="font-bold text-yellow-400 tracking-widest text-sm uppercase">{data.name.split(" ")[0]}</span>
+        <div className="flex items-center gap-4">
+          {sections.map(s => (
+            <button key={s} onClick={() => setActiveSection(s)}
+              className={`text-xs uppercase tracking-widest transition-colors ${activeSection === s ? "text-yellow-400" : sub} hover:text-yellow-400`}>
+              {s}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-3">
+          <button onClick={() => setEditMode(e => !e)}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${editMode ? "bg-yellow-400 text-gray-900 border-yellow-400" : `border-yellow-400/50 text-yellow-400 hover:bg-yellow-400/10`}`}>
+            {editMode ? "✏️ Editing" : "✏️ Edit"}
+          </button>
+          <button onClick={() => setDark(d => !d)}
+            className={`text-xs px-3 py-1.5 rounded-full border ${dark ? "border-gray-700 text-gray-300" : "border-gray-300 text-gray-600"} hover:border-yellow-400 transition-all`}>
+            {dark ? "☀️ Light" : "🌙 Dark"}
+          </button>
+        </div>
+      </nav>
+
+      {editMode && (
+        <div className="fixed bottom-4 right-4 z-50 bg-yellow-400 text-gray-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg animate-pulse">
+          ✏️ Edit Mode ON — Click any text to edit
+        </div>
+      )}
+
+      <div className="pt-16">
+        {/* HOME */}
+        {activeSection === "home" && (
+          <section className="min-h-screen flex flex-col items-center justify-center px-6 relative overflow-hidden">
+            {/* Cinematic bg blobs */}
+            <div className="absolute top-20 left-10 w-72 h-72 rounded-full bg-yellow-400/5 blur-3xl pointer-events-none" />
+            <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-purple-500/5 blur-3xl pointer-events-none" />
+
+            <div className="flex flex-col items-center text-center max-w-2xl gap-6">
+              <ImageUploader img={avatar} onUpload={setAvatar} className="w-32 h-32" round>
+                <div className={`w-32 h-32 rounded-full flex items-center justify-center text-4xl border-2 border-dashed ${dark ? "border-gray-700 bg-gray-800" : "border-gray-300 bg-gray-100"}`}>
+                  👤
+                </div>
+              </ImageUploader>
+
+              <div>
+                <E value={data.name} onChange={v => set("name", v)}
+                  className="text-5xl font-extrabold tracking-tight leading-none block mb-2" />
+                <E value={data.title} onChange={v => set("title", v)}
+                  className={`text-lg ${sub}`} />
+              </div>
+
+              <E value={data.bio} onChange={v => set("bio", v)} multiline
+                className={`text-base leading-relaxed ${sub} max-w-xl`} />
+
+              <div className="flex gap-4 flex-wrap justify-center">
+                <button onClick={() => setActiveSection("projects")}
+                  className="px-6 py-2.5 bg-yellow-400 text-gray-900 font-bold rounded-full text-sm hover:bg-yellow-300 transition-all">
+                  View Work
+                </button>
+                <button onClick={() => setActiveSection("contact")}
+                  className={`px-6 py-2.5 border ${dark ? "border-gray-700 hover:border-yellow-400" : "border-gray-300 hover:border-yellow-400"} rounded-full text-sm transition-all`}>
+                  Contact Me
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ABOUT */}
+        {activeSection === "about" && (
+          <section className="min-h-screen px-6 py-20 max-w-4xl mx-auto">
+            <h2 className="text-3xl font-extrabold mb-12 tracking-tight">
+              About <span className="text-yellow-400">Me</span>
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              {/* Skills */}
+              <div className={`border rounded-2xl p-6 ${card}`}>
+                <h3 className="text-sm uppercase tracking-widest text-yellow-400 font-bold mb-4">Skills</h3>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {data.skills.map((s, i) => (
+                    <span key={i} className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-yellow-400/10 text-yellow-400 border border-yellow-400/20">
+                      {editMode ? (
+                        <E value={s} onChange={v => set("skills", data.skills.map((sk, j) => j === i ? v : sk))} className="" />
+                      ) : s}
+                      {editMode && (
+                        <button onClick={() => set("skills", data.skills.filter((_, j) => j !== i))} className="ml-1 text-red-400 hover:text-red-300 text-xs">✕</button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+                {editMode && (
+                  <div className="flex gap-2 mt-2">
+                    <input value={newSkill} onChange={e => setNewSkill(e.target.value)}
+                      placeholder="Add skill..."
+                      className={`flex-1 text-xs px-3 py-1.5 rounded-lg bg-transparent border ${dark ? "border-gray-700" : "border-gray-300"} focus:outline-none focus:border-yellow-400`} />
+                    <button onClick={() => { if (newSkill.trim()) { set("skills", [...data.skills, newSkill.trim()]); setNewSkill(""); } }}
+                      className="px-3 py-1.5 bg-yellow-400 text-gray-900 text-xs font-bold rounded-lg">+</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Info */}
+              <div className={`border rounded-2xl p-6 ${card}`}>
+                <h3 className="text-sm uppercase tracking-widest text-yellow-400 font-bold mb-4">Info</h3>
+                {[["📧", "email"], ["📍", "location"], ["🔗", "github"], ["💼", "linkedin"]].map(([icon, key]) => (
+                  <div key={key} className={`flex items-center gap-3 py-2 border-b ${dark ? "border-gray-800" : "border-gray-100"} last:border-0`}>
+                    <span>{icon}</span>
+                    <E value={data[key]} onChange={v => set(key, v)} className={`text-sm ${sub} flex-1`} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Experience */}
+            <div className="mt-10">
+              <h3 className="text-sm uppercase tracking-widest text-yellow-400 font-bold mb-6">Experience</h3>
+              <div className="space-y-4">
+                {data.experience.map((exp, i) => (
+                  <div key={exp.id} className={`border rounded-2xl p-6 ${card} relative`}>
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1 mb-2">
+                      <div>
+                        <E value={exp.role} onChange={v => setExp(exp.id, "role", v)} className="font-bold text-base" />
+                        <span className={`text-sm ${sub}`}> @ </span>
+                        <E value={exp.company} onChange={v => setExp(exp.id, "company", v)} className="text-yellow-400 text-sm font-semibold" />
+                      </div>
+                      <E value={exp.period} onChange={v => setExp(exp.id, "period", v)} className={`text-xs ${sub} whitespace-nowrap`} />
+                    </div>
+                    <E value={exp.desc} onChange={v => setExp(exp.id, "desc", v)} multiline className={`text-sm ${sub} leading-relaxed`} />
+                    {editMode && (
+                      <button onClick={() => set("experience", data.experience.filter(e => e.id !== exp.id))}
+                        className="absolute top-3 right-3 text-red-400 hover:text-red-300 text-xs">✕ Remove</button>
+                    )}
+                  </div>
+                ))}
+                {editMode && (
+                  <button onClick={() => set("experience", [...data.experience, { id: Date.now(), role: "New Role", company: "Company", period: "Year", desc: "Describe your work here." }])}
+                    className="w-full py-3 border-2 border-dashed border-yellow-400/30 hover:border-yellow-400/60 rounded-2xl text-sm text-yellow-400/60 hover:text-yellow-400 transition-all">
+                    + Add Experience
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* PROJECTS */}
+        {activeSection === "projects" && (
+          <section className="min-h-screen px-6 py-20 max-w-5xl mx-auto">
+            <h2 className="text-3xl font-extrabold mb-12 tracking-tight">
+              My <span className="text-yellow-400">Projects</span>
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {data.projects.map(proj => (
+                <div key={proj.id} className={`border rounded-2xl overflow-hidden ${card} group hover:border-yellow-400/40 transition-all`}>
+                  <ImageUploader img={proj.img} onUpload={v => setProj(proj.id, "img", v)} className="h-44 w-full">
+                    <div className={`w-full h-44 flex items-center justify-center text-4xl ${dark ? "bg-gray-800" : "bg-gray-100"}`}>
+                      🖼️
+                    </div>
+                  </ImageUploader>
+                  <div className="p-5">
+                    <div className="flex items-center justify-between mb-2">
+                      <E value={proj.title} onChange={v => setProj(proj.id, "title", v)} className="font-bold text-base" />
+                      <E value={proj.tag} onChange={v => setProj(proj.id, "tag", v)} className="text-xs px-2 py-0.5 bg-yellow-400/10 text-yellow-400 rounded-full border border-yellow-400/20" />
+                    </div>
+                    <E value={proj.desc} onChange={v => setProj(proj.id, "desc", v)} multiline className={`text-sm ${sub} leading-relaxed`} />
+                    {editMode && (
+                      <button onClick={() => set("projects", data.projects.filter(p => p.id !== proj.id))}
+                        className="mt-3 text-xs text-red-400 hover:text-red-300">✕ Remove</button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {editMode && (
+                <button onClick={() => set("projects", [...data.projects, { id: Date.now(), title: "New Project", tag: "Tag", desc: "Describe your project.", img: null }])}
+                  className={`border-2 border-dashed rounded-2xl h-60 flex flex-col items-center justify-center gap-2 text-yellow-400/50 hover:text-yellow-400 hover:border-yellow-400/50 transition-all ${dark ? "border-gray-800" : "border-gray-300"}`}>
+                  <span className="text-3xl">+</span>
+                  <span className="text-sm">Add Project</span>
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* CONTACT */}
+        {activeSection === "contact" && (
+          <section className="min-h-screen px-6 py-20 flex flex-col items-center justify-center max-w-xl mx-auto text-center">
+            <div className="absolute top-40 left-1/2 -translate-x-1/2 w-96 h-96 bg-yellow-400/5 rounded-full blur-3xl pointer-events-none" />
+            <h2 className="text-3xl font-extrabold mb-4 tracking-tight">
+              Get In <span className="text-yellow-400">Touch</span>
+            </h2>
+            <p className={`${sub} mb-10 text-sm leading-relaxed`}>
+              Have a project in mind or just want to chat? I'd love to hear from you.
+            </p>
+            <div className={`w-full border rounded-2xl p-6 ${card} text-left space-y-4 mb-6`}>
+              <input placeholder="Your name" className={`w-full bg-transparent border-b ${dark ? "border-gray-700 focus:border-yellow-400" : "border-gray-200 focus:border-yellow-400"} py-2 text-sm focus:outline-none transition-colors`} />
+              <input placeholder="Your email" className={`w-full bg-transparent border-b ${dark ? "border-gray-700 focus:border-yellow-400" : "border-gray-200 focus:border-yellow-400"} py-2 text-sm focus:outline-none transition-colors`} />
+              <textarea rows={4} placeholder="Your message..." className={`w-full bg-transparent border-b ${dark ? "border-gray-700 focus:border-yellow-400" : "border-gray-200 focus:border-yellow-400"} py-2 text-sm focus:outline-none resize-none transition-colors`} />
+              <button className="w-full py-3 bg-yellow-400 text-gray-900 font-bold rounded-xl hover:bg-yellow-300 transition-all text-sm">
+                Send Message 🚀
+              </button>
+            </div>
+            <div className="flex gap-6">
+              {[["📧", data.email], ["🔗", data.github], ["💼", data.linkedin]].map(([icon, val], i) => (
+                <div key={i} className={`text-xs ${sub} flex items-center gap-1`}>
+                  <span>{icon}</span><span>{val}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
